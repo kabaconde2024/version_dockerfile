@@ -1,13 +1,13 @@
-# Étape 1 : Build de l'application avec Maven
-FROM maven:3.8.4-openjdk-17 AS build
+# Étape 1 : Build avec Maven et Java 21
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY . .
-RUN mvn clean package -DskipTests
+# On force l'encodage UTF-8 pendant le build
+RUN mvn clean package -DskipTests -Dfile.encoding=UTF-8
 
-# Étape 2 : Exécution de l'application (Utilisation de Temurin au lieu d'OpenJDK)
-FROM eclipse-temurin:17-jdk-focal
+# Étape 2 : Exécution avec JRE 21
+FROM eclipse-temurin:21-jre
 WORKDIR /app
-# On s'assure de copier le bon fichier jar
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Dfile.encoding=UTF-8", "-jar", "app.jar"]
