@@ -43,6 +43,8 @@ public class ServiceAuthentification {
         this.emailService = emailService;
     }
 
+
+
     public Utilisateur inscrire(RequeteInscription requete) {
         if (utilisateurRepository.existsByEmail(requete.getEmail())) {
             throw new RuntimeException("Email déjà utilisé");
@@ -55,6 +57,10 @@ public class ServiceAuthentification {
         utilisateur.setNom(requete.getNom());
         utilisateur.setCin(requete.getCin());
         utilisateur.setTelephone(requete.getTelephone());
+
+         utilisateur.setAdresse(requete.getAdresse());
+        utilisateur.setVille(requete.getVille());
+
         utilisateur.setMfaActive(true);
         utilisateur.setActive(true);
         utilisateur.setProvider("LOCAL");

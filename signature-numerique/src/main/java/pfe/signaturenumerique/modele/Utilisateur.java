@@ -23,7 +23,11 @@ public class Utilisateur implements UserDetails {
     private String nom;
     private String cin;
     private String telephone;
-
+    private String adresse;
+    private String ville;
+    private String codePostal;
+    private String civilite;
+    private String dateNaissance;
     private boolean mfaActive = true;
     private String codeMfa;
     private LocalDateTime expirationCodeMfa;
@@ -35,7 +39,20 @@ public class Utilisateur implements UserDetails {
     private Set<RoleUtilisateur> roles = new HashSet<>();
 
     public Utilisateur() {}
+    public String getAdresse() { return adresse; }
+    public void setAdresse(String adresse) { this.adresse = adresse; }
 
+    public String getVille() { return ville; }
+    public void setVille(String ville) { this.ville = ville; }
+
+    public String getCodePostal() { return codePostal; }
+    public void setCodePostal(String codePostal) { this.codePostal = codePostal; }
+
+    public String getCivilite() { return civilite; }
+    public void setCivilite(String civilite) { this.civilite = civilite; }
+
+    public String getDateNaissance() { return dateNaissance; }
+    public void setDateNaissance(String dateNaissance) { this.dateNaissance = dateNaissance; }
     // Getters et Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

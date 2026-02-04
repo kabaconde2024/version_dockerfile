@@ -79,29 +79,30 @@ const Inscription: React.FC = () => {
       motDePasse: '', confirmerMotDePasse: '', conditionsAcceptees: false,
     },
     validationSchema: validationSchema,
-    onSubmit: async (values) => {
-      setLoading(true);
-      setErreur('');
-      try {
-        // APPEL BACKEND
-        const result = await authService.inscrire(
-          values.email, values.motDePasse, values.prenom, values.nom, 
-          values.cin, values.telephone, values.dateNaissance, values.civilite,
-          values.adresse, values.ville, values.codePostal
-        );
+   onSubmit: async (values) => {
+  setLoading(true);
+  setErreur('');
+  try {
+    const result = await authService.inscrire(
+      values.email, values.motDePasse, values.prenom, values.nom, 
+      values.cin, values.telephone, values.dateNaissance, values.civilite,
+      values.adresse, values.ville, values.codePostal
+    );
 
-        if (result.succes && result.qrCodeUrl) {
-          setQrCodeUrl(result.qrCodeUrl);
-          setOpenMfaModal(true); // Affiche le QR Code
-        } else {
-          setErreur(result.message || "Erreur lors de l'inscription");
-        }
-      } catch (error: any) {
-        setErreur(error.response?.data?.message || "Erreur de connexion");
-      } finally {
-        setLoading(false);
-      }
-    },
+    // TON BACKEND RENVOIE "succes: true" (voir ControleurAuthentification.java)
+    if (result.succes) {
+      alert("Inscription réussie ! Un code de vérification vous sera envoyé par email lors de votre première connexion.");
+      navigate('/connexion'); 
+    } else {
+      setErreur(result.message || "Erreur lors de l'inscription");
+    }
+  } catch (error: any) {
+    // Affiche le message d'erreur précis du Backend (ex: "Email déjà utilisé")
+    setErreur(error.response?.data?.message || "Erreur de connexion");
+  } finally {
+    setLoading(false);
+  }
+},
   });
 
   const handleNext = () => setActiveStep((prev) => prev + 1);
