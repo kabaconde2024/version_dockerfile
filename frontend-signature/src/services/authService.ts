@@ -1,7 +1,6 @@
 // services/authService.ts
-import axios from 'axios';
 import api from './api';
-const API_URL = 'http://localhost:8080/api/auth';
+
 const authService = {
     connecter: async (email: string, password: string) => {
         const response = await api.post('/auth/connexion', {
@@ -11,11 +10,9 @@ const authService = {
         
         console.log("Réponse API connexion:", response.data);
         
-        // Assurez-vous que la réponse contient les bons champs
         if (response.data.necessiteMfa !== undefined) {
             return response.data;
         } else {
-            // Si la structure est différente, adaptez
             const result = response.data;
             return {
                 succes: result.succes || true,
@@ -27,7 +24,17 @@ const authService = {
         }
     },
 
-    
+    inscrire: async (
+        email: string, motDePasse: string, prenom: string, nom: string, 
+        cin: string, telephone: string, dateNaissance: string, civilite: string,
+        adresse: string, ville: string, codePostal: string
+    ) => {
+        const response = await api.post('/auth/inscription', {
+            email, motDePasse, prenom, nom, cin, telephone, 
+            dateNaissance, civilite, adresse, ville, codePostal
+        });
+        return response.data;
+    },
 
     verifierMfa: async (email: string, code: string) => {
         const response = await api.post('/auth/verifier-mfa', {
@@ -36,16 +43,18 @@ const authService = {
         });
         return response.data;
     },
-getUtilisateurCourant: () => {
-    const userStr = localStorage.getItem('utilisateur');
-    if (userStr) return JSON.parse(userStr);
-    return null;
-  },
 
-  deconnecter: () => {
-    localStorage.removeItem('utilisateur');
-    localStorage.removeItem('token');
-  },
+    getUtilisateurCourant: () => {
+        const userStr = localStorage.getItem('utilisateur');
+        if (userStr) return JSON.parse(userStr);
+        return null;
+    },
+
+    deconnecter: () => {
+        localStorage.removeItem('utilisateur');
+        localStorage.removeItem('token');
+    },
+
     renvoyerCodeMfa: async (email: string) => {
         const response = await api.post('/auth/renvoyer-code-mfa', {
             email
@@ -55,30 +64,23 @@ getUtilisateurCourant: () => {
 
     sauvegarderUtilisateur: (utilisateur: any, token: string) => {
         localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(utilisateur));
+        localStorage.setItem('utilisateur', JSON.stringify(utilisateur));
     },
-    // authService.ts
 
-// 1. Demander le mail
-motDePasseOublie: async (email: string) => {
-    return await axios.post(`${API_URL}/mot-de-passe-oublie?email=${email}`);
-},
+    motDePasseOublie: async (email: string) => {
+        return await api.post(`/auth/mot-de-passe-oublie?email=${email}`);
+    },
 
-// 2. Envoyer le nouveau mot de passe avec le token
-validerNouveauMdp: async (token: string | null, nouveauMdp: string) => {
-    // Note : on envoie le mot de passe en tant que String brute ou objet JSON selon ton @RequestBody Backend
-    return await axios.post(`${API_URL}/reinitialiser?token=${token}`, nouveauMdp, {
-        headers: { 'Content-Type': 'text/plain' } 
-    });
-},
-connecterAvecGoogle: async (idToken: string) => {
-  const response = await axios.post(`${API_URL}/google`, { token: idToken });
-  return response.data;
-}
-    
+    validerNouveauMdp: async (token: string | null, nouveauMdp: string) => {
+        return await api.post(`/auth/reinitialiser?token=${token}`, nouveauMdp, {
+            headers: { 'Content-Type': 'text/plain' } 
+        });
+    },
 
+    connecterAvecGoogle: async (idToken: string) => {
+        const response = await api.post('/auth/google', { token: idToken });
+        return response.data;
+    }
 };
-
-
 
 export default authService;

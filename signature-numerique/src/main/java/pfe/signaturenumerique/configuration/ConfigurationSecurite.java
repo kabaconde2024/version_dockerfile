@@ -40,16 +40,16 @@ public class ConfigurationSecurite {
     }
 
     // 3. Définition de la politique CORS
+    // Dans signature-numerique/.../ConfigurationSecurite.java
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Autorise ton frontend React
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
-        // Autorise les méthodes HTTP
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:3000",
+                "https://pfe-mastere-1.onrender.com" 
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        // Autorise tous les headers (Content-Type, Authorization, etc.)
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        // Autorise l'envoi de cookies ou credentials si besoin
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
