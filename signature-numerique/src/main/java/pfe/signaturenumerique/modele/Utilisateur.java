@@ -34,26 +34,32 @@ public class Utilisateur implements UserDetails {
     private String provider;
     private Boolean active = true;
 
+    @Column(columnDefinition = "TEXT")
+    private String privateKeyStr;
+
+    @Column(columnDefinition = "TEXT")
+    private String publicKeyStr;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     private Set<RoleUtilisateur> roles = new HashSet<>();
 
     public Utilisateur() {}
-    public String getAdresse() { return adresse; }
-    public void setAdresse(String adresse) { this.adresse = adresse; }
+    @Column(columnDefinition = "TEXT")
+    private String clePublique;
+    // Getters et Setters pour les clés
+    public String getPrivateKeyStr() { return privateKeyStr; }
+    public void setPrivateKeyStr(String privateKeyStr) { this.privateKeyStr = privateKeyStr; }
 
-    public String getVille() { return ville; }
-    public void setVille(String ville) { this.ville = ville; }
+    public String getClePublique() {
+        return clePublique;
+    }
 
-    public String getCodePostal() { return codePostal; }
-    public void setCodePostal(String codePostal) { this.codePostal = codePostal; }
+    public void setClePublique(String clePublique) {
+        this.clePublique = clePublique;
+    }
 
-    public String getCivilite() { return civilite; }
-    public void setCivilite(String civilite) { this.civilite = civilite; }
-
-    public String getDateNaissance() { return dateNaissance; }
-    public void setDateNaissance(String dateNaissance) { this.dateNaissance = dateNaissance; }
-    // Getters et Setters
+    // Autres Getters et Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getEmail() { return email; }
@@ -68,6 +74,16 @@ public class Utilisateur implements UserDetails {
     public void setCin(String cin) { this.cin = cin; }
     public String getTelephone() { return telephone; }
     public void setTelephone(String telephone) { this.telephone = telephone; }
+    public String getAdresse() { return adresse; }
+    public void setAdresse(String adresse) { this.adresse = adresse; }
+    public String getVille() { return ville; }
+    public void setVille(String ville) { this.ville = ville; }
+    public String getCodePostal() { return codePostal; }
+    public void setCodePostal(String codePostal) { this.codePostal = codePostal; }
+    public String getCivilite() { return civilite; }
+    public void setCivilite(String civilite) { this.civilite = civilite; }
+    public String getDateNaissance() { return dateNaissance; }
+    public void setDateNaissance(String dateNaissance) { this.dateNaissance = dateNaissance; }
     public boolean isMfaActive() { return mfaActive; }
     public void setMfaActive(boolean mfaActive) { this.mfaActive = mfaActive; }
     public String getCodeMfa() { return codeMfa; }
@@ -81,7 +97,7 @@ public class Utilisateur implements UserDetails {
     public Set<RoleUtilisateur> getRoles() { return roles; }
     public void setRoles(Set<RoleUtilisateur> roles) { this.roles = roles; }
 
-    // UserDetails
+    // Implémentation UserDetails
     @Override public Collection<? extends GrantedAuthority> getAuthorities() {
         return roles.stream().map(r -> new SimpleGrantedAuthority(r.name())).collect(Collectors.toList());
     }

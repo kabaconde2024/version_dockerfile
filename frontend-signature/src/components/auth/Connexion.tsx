@@ -43,7 +43,12 @@ const Connexion: React.FC = () => {
 
       if (result.tokenAcces) {
         authService.sauvegarderUtilisateur(result.utilisateur, result.tokenAcces);
-        navigate('/dashboard', { replace: true });
+        
+        // Délai pour s'assurer que les données sont bien sauvegardées
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 100);
+        
         return;
       }
       
@@ -64,7 +69,11 @@ const Connexion: React.FC = () => {
       // Appel au service pour gérer le token Google
       const res = await authService.connecterAvecGoogle(credentialResponse.credential);
       authService.sauvegarderUtilisateur(res.utilisateur, res.tokenAcces);
-      navigate('/dashboard', { replace: true });
+      
+      setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 100);
+      
     } catch (err: any) {
       setErreur("L'authentification Google a échoué côté serveur.");
     } finally {

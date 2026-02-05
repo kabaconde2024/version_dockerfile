@@ -71,12 +71,33 @@ const authService = {
         return await api.post(`/auth/mot-de-passe-oublie?email=${email}`);
     },
 
-    validerNouveauMdp: async (token: string | null, nouveauMdp: string) => {
-        return await api.post(`/auth/reinitialiser?token=${token}`, nouveauMdp, {
-            headers: { 'Content-Type': 'text/plain' } 
-        });
-    },
-
+// services/authService.ts
+validerNouveauMdp: async (token: string | null, nouveauMdp: string) => {
+    if (!token) {
+        throw new Error("Token manquant");
+    }
+    
+    try {
+        const response = await api.post(
+            `/auth/reinitialiser?token=${token}`,
+            { nouveauMdp: nouveauMdp }, // Format JSON correct
+            {
+                headers: { 
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        return response.data;
+    } catch (error: any) {
+        // Gestion améliorée des erreurs
+        if (error.response?.status === 400) {
+            throw new Error(error.response.data?.message || "Token invalide ou expiré");
+        } else if (error.response?.status === 415) {
+            throw new Error("Erreur de format de requête");
+        }
+        throw error;
+    }
+},
     connecterAvecGoogle: async (idToken: string) => {
         const response = await api.post('/auth/google', { token: idToken });
         return response.data;

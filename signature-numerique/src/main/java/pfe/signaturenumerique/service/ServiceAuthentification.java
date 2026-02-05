@@ -68,6 +68,8 @@ public class ServiceAuthentification {
         return utilisateurRepository.save(utilisateur);
     }
 
+
+
     public ReponseAuthentification connecter(RequeteConnexion requete) {
         Utilisateur utilisateur = utilisateurRepository.findByEmail(requete.getEmail())
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
@@ -100,6 +102,8 @@ public class ServiceAuthentification {
         String token = jwtUtils.generateToken(utilisateur);
         return construireReponseSucces(utilisateur, token);
     }
+
+
 
     public ReponseAuthentification connecterAvecGoogle(String tokenId) throws Exception {
         GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())

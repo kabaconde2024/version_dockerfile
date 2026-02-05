@@ -14,7 +14,7 @@ import java.util.Date;
 public class JwtUtils {
 
     private final String jwtSecret = "votre_cle_secrete_tres_longue_pour_signature_numerique_2024_pfe_spring_boot";
-    private final int jwtExpirationMs = 86400000; // 24 heures
+    private final int jwtExpirationMs = 86400000;
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());

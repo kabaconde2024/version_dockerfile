@@ -104,10 +104,22 @@ public class ControleurAuthentification {
     public ResponseEntity<?> reinitialiser(@RequestParam String token, @RequestBody Map<String, String> body) {
         try {
             String nouveauMdp = body.get("nouveauMdp");
+
+            if (nouveauMdp == null || nouveauMdp.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Le mot de passe est requis");
+            }
+
+            if (nouveauMdp.length() < 6) {
+                return ResponseEntity.badRequest().body("Le mot de passe doit contenir au moins 6 caractères");
+            }
+
             serviceAuthentification.changerMotDePasse(token, nouveauMdp);
             return ResponseEntity.ok().body(Map.of("message", "Mot de passe mis à jour avec succès"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erreur interne du serveur");
         }
     }
 }
