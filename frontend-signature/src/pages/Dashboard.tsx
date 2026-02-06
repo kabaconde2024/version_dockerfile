@@ -1,28 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container, Typography, Button, Paper, Box, Grid,
   Avatar, Divider, Chip, Card, CardContent, Alert,
-  LinearProgress, AppBar, Toolbar, useScrollTrigger, Stack,
-  CircularProgress
+  AppBar, Toolbar, useScrollTrigger, Stack,
+  CircularProgress, IconButton, Dialog, DialogTitle, 
+  DialogContent, DialogContentText, TextField, DialogActions
 } from '@mui/material';
 import {
-  CloudUpload, Fingerprint, AccountCircle,
-  Security, CheckCircle, Logout, Shield, VerifiedUser,
-  History, FilePresent, TaskAlt, ErrorOutline
+  Logout, Shield, History, FilePresent, TaskAlt, 
+  Download, PersonAdd
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import CryptoJS from 'crypto-js';
 import axios from 'axios';
 
-// Effet d'élévation pour la Navbar
 function ElevationScroll(props: any) {
   const { children } = props;
-  const trigger = useScrollTrigger({
-    disableHysteresis: true,
-    threshold: 0,
-  });
-
+  const trigger = useScrollTrigger({ disableHysteresis: true, threshold: 0 });
   return React.cloneElement(children, {
     elevation: trigger ? 4 : 0,
     style: {
@@ -39,145 +34,168 @@ const Dashboard: React.FC = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [utilisateur, setUtilisateur] = useState<any>(null);
 
-  // États de base
+  // États du document
   const [file, setFile] = useState<File | null>(null);
   const [hash, setHash] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  
-  // États Signature
   const [isSigning, setIsSigning] = useState(false);
   const [signatureDone, setSignatureDone] = useState(false);
-  const [lastSignatureBase64, setLastSignatureBase64] = useState<string>('');
+  
+  // États de l'historique
+  const [historique, setHistorique] = useState<any[]>([]);
 
-  // États Vérification
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<{valide: boolean, message: string} | null>(null);
+  // ÉTATS POUR L'INVITATION
+  const [openInvite, setOpenInvite] = useState(false);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
 
-  // Vérifier l'authentification
+  // 1. Fonction de chargement de l'historique
+  const loadHistorique = useCallback(async (userId: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token || !userId) return;
+
+      const response = await axios.get(`http://localhost:8080/api/signature/historique/${userId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setHistorique(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      console.error("Erreur lors du chargement de l'historique:", err);
+    }
+  }, []);
+
+  // 2. Initialisation
   useEffect(() => {
-    const checkAuth = () => {
+    const initDashboard = async () => {
       const user = authService.getUtilisateurCourant();
-      if (!user) {
-        // Redirection avec un léger délai pour éviter les problèmes de rendu
-        setTimeout(() => {
-          navigate('/connexion');
-        }, 0);
-      } else {
-        setUtilisateur(user);
-        setIsCheckingAuth(false);
+      const userId = user?.id || user?._id;
+
+      if (!user || !userId) {
+        navigate('/connexion');
+        return;
       }
+
+      setUtilisateur(user);
+      await loadHistorique(userId);
+      setIsCheckingAuth(false);
     };
+
+    initDashboard();
+  }, [navigate, loadHistorique]);
+
+  // FONCTION TÉLÉCHARGEMENT
+  const handleDownload = async (docId: string, fileName: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`http://localhost:8080/api/signature/telecharger/${docId}`, {
+        responseType: 'blob',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName || 'document_signe.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert("Impossible de télécharger le fichier.");
+    }
+  };
+
+  // --- FONCTION INVITATION CORRIGÉE ---
+  const handleSendInvite = async () => {
+    if (!inviteEmail || !selectedDocId) return;
     
-    checkAuth();
-  }, [navigate]);
+    // Trouver le nom du document correspondant dans l'historique pour l'envoyer au backend
+    const documentData = historique.find(d => d.id === selectedDocId);
+    const fileNameToSend = documentData ? documentData.fileName : "Document";
+
+    setIsSendingInvite(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post('http://localhost:8080/api/signature/inviter', {
+        documentId: selectedDocId,
+        fileName: fileNameToSend, // Ajout de fileName ici pour éviter le "null" dans l'email
+        email: inviteEmail
+      }, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      alert(response.data.message || "Invitation envoyée avec succès !");
+      setOpenInvite(false);
+      setInviteEmail("");
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Erreur : Utilisateur introuvable ou erreur serveur.";
+      alert(msg);
+    } finally {
+      setIsSendingInvite(false);
+    }
+  };
 
   const handleLogout = () => {
     authService.deconnecter();
     navigate('/connexion');
   };
 
-  // Gestion du hachage local du fichier
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
       setSignatureDone(false);
-      setVerificationResult(null); // Reset du résultat précédent
-      setLoading(true);
       const reader = new FileReader();
       reader.onload = (event) => {
         const binary = event.target?.result;
         if (binary) {
           const wa = CryptoJS.lib.WordArray.create(binary as any);
-          const sha256Hash = CryptoJS.SHA256(wa).toString();
-          setHash(sha256Hash);
-          setLoading(false);
+          setHash(CryptoJS.SHA256(wa).toString());
         }
       };
       reader.readAsArrayBuffer(selectedFile);
     }
   };
 
-  // Fonction pour signer
   const handleSignerDocument = async () => {
-    if (!hash || !file || !utilisateur) return;
+    const userId = utilisateur?.id || utilisateur?._id;
+    if (!hash || !file || !userId) return;
 
     setIsSigning(true);
     try {
-      const token = localStorage.getItem('token'); 
-      const payload = {
-        hash: hash,
-        fileName: file.name,
-        userId: utilisateur.id
-      };
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const base64File = (reader.result as string).split(',')[1];
+        const token = localStorage.getItem('token'); 
+        await axios.post('http://localhost:8080/api/signature/signer', {
+          hash: hash, 
+          fileName: file.name, 
+          userId: userId,
+          fileBase64: base64File
+        }, { 
+          headers: { 'Authorization': `Bearer ${token}` } 
+        });
 
-      const response = await axios.post('http://localhost:8080/api/signature/signer', payload, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.data) {
         setSignatureDone(true);
-        // On récupère la signature générée par le backend pour permettre la vérification immédiate
-        setLastSignatureBase64(response.data.signature);
-        alert("Document signé avec succès !");
-      }
+        await loadHistorique(userId);
+      };
     } catch (error) {
-      console.error("Erreur de signature", error);
       alert("Erreur lors de la signature.");
     } finally {
       setIsSigning(false);
     }
   };
 
-  // Fonction pour vérifier
-  const handleVerifierDocument = async () => {
-    if (!hash || !utilisateur || !lastSignatureBase64) return;
-    
-    setIsVerifying(true);
-    try {
-      const token = localStorage.getItem('token');
-      const payload = {
-        hash: hash,
-        signature: lastSignatureBase64,
-        utilisateurId: utilisateur.id
-      };
-
-      const response = await axios.post('http://localhost:8080/api/signature/verifier', payload, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      setVerificationResult({
-        valide: response.data.valide,
-        message: response.data.message
-      });
-    } catch (error: any) {
-      setVerificationResult({
-        valide: false,
-        message: error.response?.data?.message || "Erreur lors de la vérification"
-      });
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  // Afficher un loader pendant la vérification de l'authentification
   if (isCheckingAuth) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        bgcolor: '#F8FAFC'
-      }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
       </Box>
     );
-  }
-
-  // Si pas d'utilisateur (après vérification), retourner null
-  if (!utilisateur) {
-    return null;
   }
 
   return (
@@ -186,19 +204,10 @@ const Dashboard: React.FC = () => {
         <AppBar position="fixed" color="transparent">
           <Container maxWidth="lg">
             <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }} onClick={() => navigate('/')}>
-                <Box sx={{ bgcolor: '#2979FF', p: 0.8, borderRadius: 1.5, display: 'flex' }}>
-                  <Shield sx={{ color: 'white' }} />
-                </Box>
-                <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: -0.5, fontStyle: 'italic' }}>
-                  Protected <Box component="span" sx={{ color: '#2979FF' }}>Consulting</Box>
-                </Typography>
-              </Box>
-              <Button 
-                startIcon={<Logout />} 
-                onClick={handleLogout}
-                sx={{ fontWeight: 700, textTransform: 'none', color: 'inherit' }}
-              >
+              <Typography variant="h5" sx={{ fontWeight: 800, cursor: 'pointer', color: '#1A237E' }} onClick={() => navigate('/')}>
+                Protected <Box component="span" sx={{ color: '#2979FF' }}>Consulting</Box>
+              </Typography>
+              <Button startIcon={<Logout />} onClick={handleLogout} sx={{ fontWeight: 700, textTransform: 'none' }}>
                 Déconnexion
               </Button>
             </Toolbar>
@@ -206,175 +215,131 @@ const Dashboard: React.FC = () => {
         </AppBar>
       </ElevationScroll>
 
-      <Box sx={{ 
-        background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
-        color: 'white',
-        pt: 15, pb: 10,
-        clipPath: 'polygon(0 0, 100% 0, 100% 85%, 0 100%)',
-      }}>
+      <Box sx={{ background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)', color: 'white', pt: 15, pb: 10, clipPath: 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' }}>
         <Container maxWidth="lg">
-          <Typography variant="h3" fontWeight={900} sx={{ mb: 1 }}>Tableau de Bord</Typography>
-          <Typography variant="h6" sx={{ opacity: 0.7 }}>Espace de gestion et signature sécurisée</Typography>
+          <Typography variant="h3" fontWeight={900}>Tableau de Bord</Typography>
+          <Typography variant="h6" sx={{ opacity: 0.7 }}>Bienvenue, {utilisateur?.prenom} {utilisateur?.nom}</Typography>
         </Container>
       </Box>
 
       <Container maxWidth="lg" sx={{ mt: -8, pb: 10 }}>
         <Grid container spacing={4}>
           <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 4, borderRadius: 5, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-              <Avatar 
-                sx={{ 
-                  width: 100, height: 100, mx: 'auto', mb: 2, 
-                  background: 'linear-gradient(45deg, #2979FF, #00E676)',
-                  fontSize: '2rem', fontWeight: 'bold'
-                }}
-              >
-                {utilisateur.prenom?.[0] || ''}{utilisateur.nom?.[0] || ''}
+            <Paper sx={{ p: 4, borderRadius: 5, textAlign: 'center', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+              <Avatar sx={{ width: 80, height: 80, mx: 'auto', mb: 2, background: 'linear-gradient(45deg, #2979FF, #00E676)' }}>
+                {utilisateur?.prenom?.[0]}{utilisateur?.nom?.[0]}
               </Avatar>
-              <Typography variant="h5" fontWeight={800}>{utilisateur.prenom} {utilisateur.nom}</Typography>
-              <Typography color="text.secondary" sx={{ mb: 2 }}>{utilisateur.email}</Typography>
-              <Chip 
-                icon={<VerifiedUser sx={{ fontSize: '1rem !important' }}/>} 
-                label="ID Vérifié par ANSI" 
-                sx={{ bgcolor: '#F0F7FF', color: '#2979FF', fontWeight: 700, borderRadius: 1.5 }}
-              />
-              <Divider sx={{ my: 4, opacity: 0.6 }} />
-              <Stack spacing={2} textAlign="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar sx={{ bgcolor: '#F1F5F9', color: '#475569', width: 35, height: 35 }}>
-                    <AccountCircle fontSize="small" />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">NUMÉRO CIN</Typography>
-                    <Typography fontWeight={700}>{utilisateur.cin}</Typography>
-                  </Box>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar sx={{ bgcolor: utilisateur.mfaActive ? '#ECFDF5' : '#FFF1F2', color: utilisateur.mfaActive ? '#059669' : '#E11D48', width: 35, height: 35 }}>
-                    <Security fontSize="small" />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">SÉCURITÉ 2FA</Typography>
-                    <Typography fontWeight={700}>{utilisateur.mfaActive ? 'Activé' : 'Désactivé'}</Typography>
-                  </Box>
-                </Box>
+              <Typography variant="h6" fontWeight={800}>{utilisateur?.prenom} {utilisateur?.nom}</Typography>
+              <Chip label="Identité Vérifiée" color="success" size="small" sx={{ mt: 1, fontWeight: 700 }} />
+              <Divider sx={{ my: 3 }} />
+              <Stack spacing={1} textAlign="left">
+                <Typography variant="caption" color="text.secondary">Email: <b>{utilisateur?.email}</b></Typography>
+                <Typography variant="caption" color="text.secondary">CIN: <b>{utilisateur?.cin}</b></Typography>
               </Stack>
             </Paper>
           </Grid>
 
           <Grid item xs={12} md={8}>
             <Stack spacing={4}>
-              <Card sx={{ borderRadius: 5, border: '1px solid #E2E8F0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
-                <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h5" fontWeight={800} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <FilePresent color="primary" /> Signature & Vérification
+              <Card sx={{ borderRadius: 5, p: 2 }}>
+                <CardContent>
+                  <Typography variant="h6" fontWeight={800} gutterBottom>
+                    <FilePresent color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} /> 
+                    Nouveau Scellement
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-                    Le document est haché localement (SHA-256). Signez-le puis vérifiez son intégrité.
-                  </Typography>
-
-                  <Box 
-                    component="label"
-                    sx={{ 
-                      mt: 2, p: 6, border: '2px dashed #CBD5E1', borderRadius: 4, 
-                      bgcolor: '#F8FAFC', textAlign: 'center', cursor: 'pointer',
-                      display: 'block', transition: '0.3s',
-                      '&:hover': { bgcolor: '#F0F7FF', borderColor: '#2979FF' }
-                    }}
-                  >
+                  <Box component="label" sx={{ mt: 2, p: 4, border: '2px dashed #CBD5E1', borderRadius: 4, textAlign: 'center', display: 'block', cursor: 'pointer', transition: '0.3s', '&:hover': { bgcolor: '#F1F5F9' } }}>
                     <input type="file" hidden accept=".pdf" onChange={handleFileChange} />
                     {!file ? (
-                      <>
-                        <CloudUpload sx={{ fontSize: 48, color: '#94A3B8', mb: 2 }} />
-                        <Typography variant="h6" fontWeight={700}>Glissez-déposez votre PDF</Typography>
-                        <Typography variant="body2" color="text.secondary">Ou cliquez pour parcourir</Typography>
-                      </>
+                      <Typography color="text.secondary">Cliquez pour ajouter un document PDF</Typography>
                     ) : (
-                      <Stack direction="row" alignItems="center" justifyContent="center" spacing={2}>
-                        <CheckCircle color="success" sx={{ fontSize: 32 }} />
-                        <Box textAlign="left">
-                          <Typography fontWeight={800}>{file.name}</Typography>
-                          <Typography variant="caption" color="text.secondary">{(file.size / 1024 / 1024).toFixed(2)} MB</Typography>
-                        </Box>
-                      </Stack>
+                      <Typography fontWeight={700} color="primary">{file.name}</Typography>
                     )}
                   </Box>
 
-                  {(loading || isSigning || isVerifying) && <LinearProgress sx={{ mt: 2, borderRadius: 2 }} />}
-
                   {hash && (
-                    <Box sx={{ mt: 4 }}>
-                      <Alert severity="info" icon={<Fingerprint sx={{ color: '#2979FF' }} />} sx={{ borderRadius: 3, bgcolor: '#F0F7FF', border: '1px solid #BBDEFB', mb: 3 }}>
-                        <Typography variant="subtitle2" fontWeight={800} color="#1A237E">Empreinte numérique (Hash) :</Typography>
-                        <Typography variant="body2" sx={{ wordBreak: 'break-all', fontFamily: 'monospace', mt: 1, color: '#2979FF', fontWeight: 600 }}>
-                          {hash}
-                        </Typography>
-                      </Alert>
-
-                      <Stack direction="row" spacing={2}>
-                        {!signatureDone ? (
-                          <Button 
-                            variant="contained" 
-                            fullWidth 
-                            size="large" 
-                            startIcon={<Fingerprint />}
-                            onClick={handleSignerDocument}
-                            disabled={isSigning}
-                            sx={{ py: 2, borderRadius: 3, fontWeight: 800, textTransform: 'none', boxShadow: '0 4px 14px 0 rgba(0,118,255,0.39)' }}
-                          >
-                            {isSigning ? 'Signature en cours...' : 'Signer avec certificat'}
-                          </Button>
-                        ) : (
-                          <Button 
-                            variant="outlined" 
-                            fullWidth 
-                            size="large" 
-                            color="secondary"
-                            startIcon={<Security />}
-                            onClick={handleVerifierDocument}
-                            disabled={isVerifying}
-                            sx={{ py: 2, borderRadius: 3, fontWeight: 800, textTransform: 'none', borderWidth: 2, '&:hover': { borderWidth: 2 } }}
-                          >
-                            {isVerifying ? 'Vérification...' : 'Vérifier l\'intégrité'}
-                          </Button>
-                        )}
-                      </Stack>
+                    <Box sx={{ mt: 3 }}>
+                      {!signatureDone ? (
+                        <Button variant="contained" fullWidth onClick={handleSignerDocument} disabled={isSigning} sx={{ py: 1.5, borderRadius: 3, fontWeight: 700 }}>
+                          {isSigning ? <CircularProgress size={24} color="inherit" /> : 'Signer numériquement'}
+                        </Button>
+                      ) : (
+                        <Alert icon={<TaskAlt />} severity="success" sx={{ borderRadius: 3 }}>
+                          Document signé avec succès et archivé.
+                        </Alert>
+                      )}
                     </Box>
-                  )}
-
-                  {/* Affichage du résultat de la vérification */}
-                  {verificationResult && (
-                    <Alert 
-                      severity={verificationResult.valide ? "success" : "error"} 
-                      icon={verificationResult.valide ? <TaskAlt /> : <ErrorOutline />}
-                      sx={{ mt: 4, borderRadius: 3, border: '1px solid' }}
-                    >
-                      <Typography fontWeight={700}>{verificationResult.message}</Typography>
-                    </Alert>
-                  )}
-
-                  {signatureDone && !verificationResult && (
-                    <Alert severity="success" sx={{ mt: 4, borderRadius: 3 }}>
-                      Document signé avec succès ! Vous pouvez maintenant tester la vérification.
-                    </Alert>
                   )}
                 </CardContent>
               </Card>
 
               <Box>
                 <Typography variant="h6" fontWeight={800} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <History /> Activité Récente
+                  <History /> Historique des documents
                 </Typography>
-                <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, bgcolor: 'transparent', borderStyle: 'dashed' }}>
-                  <Typography variant="body2" color="text.secondary" textAlign="center">
-                    {signatureDone ? `Dernière action : Signature de ${file?.name}` : "Aucun document signé récemment."}
-                  </Typography>
-                </Paper>
+                <Stack spacing={2}>
+                  {historique.length === 0 ? (
+                    <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
+                      <Typography variant="body2" color="text.secondary">Aucun document dans votre coffre-fort.</Typography>
+                    </Paper>
+                  ) : (
+                    historique.map((doc, i) => (
+                      <Paper key={i} variant="outlined" sx={{ p: 2, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: '0.2s', '&:hover': { boxShadow: 2, borderColor: '#2979FF' } }}>
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Avatar sx={{ bgcolor: '#F0F9FF' }}><FilePresent sx={{ color: '#0284C7' }} /></Avatar>
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight={700}>{doc.fileName}</Typography>
+                            <Typography variant="caption" color="text.secondary">{new Date(doc.timestamp).toLocaleString()}</Typography>
+                          </Box>
+                        </Stack>
+                        
+                        <Stack direction="row" spacing={1}>
+                          <IconButton size="small" color="primary" title="Inviter quelqu'un" onClick={() => { setSelectedDocId(doc.id); setOpenInvite(true); }}>
+                            <PersonAdd fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" color="info" title="Télécharger" onClick={() => handleDownload(doc.id, doc.fileName)}>
+                            <Download fontSize="small" />
+                          </IconButton>
+                          <Chip label="SCELLÉ" size="small" color="success" variant="outlined" sx={{ fontWeight: 800 }} />
+                        </Stack>
+                      </Paper>
+                    ))
+                  )}
+                </Stack>
               </Box>
             </Stack>
           </Grid>
         </Grid>
       </Container>
+
+      {/* MODAL D'INVITATION */}
+      <Dialog open={openInvite} onClose={() => setOpenInvite(false)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ fontWeight: 800 }}>Partager le document</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Saisissez l'email de la personne pour l'autoriser à consulter ce document.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            label="Email de l'invité"
+            type="email"
+            fullWidth
+            variant="outlined"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setOpenInvite(false)} color="inherit">Annuler</Button>
+          <Button 
+            onClick={handleSendInvite} 
+            variant="contained" 
+            disabled={!inviteEmail || isSendingInvite}
+            startIcon={isSendingInvite ? <CircularProgress size={20} /> : <PersonAdd />}
+          >
+            Envoyer l'accès
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

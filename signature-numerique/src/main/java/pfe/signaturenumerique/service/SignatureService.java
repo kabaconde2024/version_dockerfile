@@ -90,4 +90,31 @@ public class SignatureService {
 
 
     }
+
+
+    // Ajoutez ces méthodes dans SignatureService.java
+
+    public String genererHorodatage(String signature) {
+        // Simulation d'un jeton TSA (Time Stamping Authority)
+        // En production, on enverrait le hash à un serveur RFC 3161
+        return "TSA_TOKEN_" + Base64.getEncoder().encodeToString(String.valueOf(System.currentTimeMillis()).getBytes());
+    }
+
+    public boolean validerChaineCertificat(Long userId) {
+        // Vérifie si le certificat utilisateur est révoqué ou expiré (OCSP/CRL)
+        // Retourne true pour la simulation PFE
+        return true;
+    }
+
+    public void archiverPreuves(Long userId, String fileName, String hash, String signature, String tsaToken, byte[] content) {
+        SignatureLog log = new SignatureLog();
+        log.setUserId(userId);
+        log.setFileName(fileName);
+        log.setHash(hash);
+        log.setFileContent(content); // <--- ON ENREGISTRE LE FICHIER ICI
+        log.setTimestamp(LocalDateTime.now().toString());
+        log.setAction("SIGNATURE_ET_SCELLEMENT");
+
+        mongoRepo.save(log);
+    }
 }

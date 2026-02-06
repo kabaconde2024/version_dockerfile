@@ -218,6 +218,7 @@ public class ServiceAuthentification {
         dto.setEmail(u.getEmail());
         dto.setPrenom(u.getPrenom());
         dto.setNom(u.getNom());
+        dto.setId(u.getId()); // <--- AJOUTEZ CETTE LIGNE ICI AUSSI
         if (u.getRoles() != null) {
             dto.setRoles(u.getRoles().stream().map(Enum::name).collect(Collectors.toSet()));
         }

@@ -62,10 +62,22 @@ const authService = {
         return response.data;
     },
 
-    sauvegarderUtilisateur: (utilisateur: any, token: string) => {
-        localStorage.setItem('token', token);
-        localStorage.setItem('utilisateur', JSON.stringify(utilisateur));
-    },
+  sauvegarderUtilisateur: (utilisateur: any, token: string) => {
+    if (!token || !utilisateur) {
+        console.error("Tentative de sauvegarde invalide :", { token, utilisateur });
+        return;
+    }
+
+    // On s'assure que l'ID existe (id pour SQL, _id pour MongoDB)
+    const id = utilisateur.id || utilisateur._id;
+    
+    if (!id) {
+        console.warn("Attention: L'utilisateur sauvegardé n'a pas d'ID !", utilisateur);
+    }
+
+    localStorage.setItem('token', token);
+    localStorage.setItem('utilisateur', JSON.stringify(utilisateur));
+},
 
     motDePasseOublie: async (email: string) => {
         return await api.post(`/auth/mot-de-passe-oublie?email=${email}`);
@@ -102,6 +114,8 @@ validerNouveauMdp: async (token: string | null, nouveauMdp: string) => {
         const response = await api.post('/auth/google', { token: idToken });
         return response.data;
     }
+
+    
 };
 
 export default authService;

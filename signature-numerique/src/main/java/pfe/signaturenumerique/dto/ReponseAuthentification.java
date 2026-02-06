@@ -12,7 +12,7 @@ public class ReponseAuthentification {
 
     public ReponseAuthentification() {}
 
-    // Getters et Setters
+    // Getters et Setters globaux
     public boolean isSucces() { return succes; }
     public void setSucces(boolean succes) { this.succes = succes; }
     public String getMessage() { return message; }
@@ -26,13 +26,20 @@ public class ReponseAuthentification {
     public UtilisateurDto getUtilisateur() { return utilisateur; }
     public void setUtilisateur(UtilisateurDto utilisateur) { this.utilisateur = utilisateur; }
 
+    // --- C'est CETTE CLASSE INTERNE qu'il fallait modifier ---
     public static class UtilisateurDto {
+        private Long id; // <--- AJOUTÉ : Pour que le frontend reçoive l'ID
         private String email;
         private String prenom;
         private String nom;
         private Set<String> roles;
 
         public UtilisateurDto() {}
+
+        // Getters et Setters pour la classe interne
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
         public String getPrenom() { return prenom; }
