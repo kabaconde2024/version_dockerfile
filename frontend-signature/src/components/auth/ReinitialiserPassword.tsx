@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Container, Paper, TextField, Button, Typography, Alert, Box, CircularProgress } from '@mui/material';
 import authService from '../../services/authService';
 import axios from 'axios';
-
+const API_BASE_URL = "https://version-dockerfile.onrender.com";
 const ReinitialiserPassword = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -14,62 +14,48 @@ const ReinitialiserPassword = () => {
     const [status, setStatus] = useState({ type: '', msg: '' });
     const [loading, setLoading] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        if (password !== confirmPassword) {
-            return setStatus({ type: 'error', msg: 'Les mots de passe ne correspondent pas' });
-        }
+   const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password !== confirmPassword) {
+        return setStatus({ type: 'error', msg: 'Les mots de passe ne correspondent pas' });
+    }
 
-        if (password.length < 6) {
-            return setStatus({ type: 'error', msg: 'Le mot de passe doit contenir au moins 6 caractères' });
-        }
+    if (password.length < 6) {
+        return setStatus({ type: 'error', msg: 'Le mot de passe doit contenir au moins 6 caractères' });
+    }
 
-        setLoading(true);
-        setStatus({ type: '', msg: '' });
+    setLoading(true);
+    setStatus({ type: '', msg: '' });
 
-        try {
-            // Utiliser axios directement avec le bon format JSON
-            const response = await axios.post(
-                `http://localhost:8080/api/auth/reinitialiser?token=${token}`,
-                { nouveauMdp: password }, // Envoyer comme objet JSON
-                {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+    try {
+        // CORRECTION : Utilisation de l'URL Render au lieu de localhost
+        // On utilise la constante API_BASE_URL que vous avez définie en haut du fichier
+        const response = await axios.post(
+            `${API_BASE_URL}/api/auth/reinitialiser?token=${token}`,
+            { nouveauMdp: password }, 
+            {
+                headers: {
+                    'Content-Type': 'application/json'
                 }
-            );
+            }
+        );
 
-            if (response.status === 200) {
-                setStatus({ 
-                    type: 'success', 
-                    msg: 'Mot de passe modifié avec succès ! Redirection vers la connexion...' 
-                });
-                setTimeout(() => navigate('/connexion'), 3000);
-            }
-        } catch (err: any) {
-            console.error('Erreur lors de la réinitialisation:', err);
-            
-            if (err.response?.status === 415) {
-                setStatus({ 
-                    type: 'error', 
-                    msg: 'Erreur de format. Veuillez réessayer.' 
-                });
-            } else if (err.response?.status === 400) {
-                setStatus({ 
-                    type: 'error', 
-                    msg: err.response.data || 'Le lien est invalide ou a expiré.' 
-                });
-            } else {
-                setStatus({ 
-                    type: 'error', 
-                    msg: 'Erreur lors de la réinitialisation. Veuillez réessayer.' 
-                });
-            }
-        } finally {
-            setLoading(false);
+        if (response.status === 200) {
+            setStatus({ 
+                type: 'success', 
+                msg: 'Mot de passe modifié avec succès ! Redirection vers la connexion...' 
+            });
+            setTimeout(() => navigate('/connexion'), 3000);
         }
-    };
+    } catch (err: any) {
+        console.error('Erreur lors de la réinitialisation:', err);
+        const errorMsg = err.response?.data?.message || err.response?.data || 'Le lien est invalide ou a expiré.';
+        setStatus({ type: 'error', msg: errorMsg });
+    } finally {
+        setLoading(false);
+    }
+};
 
     if (!token) {
         return (
