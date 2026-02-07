@@ -20,13 +20,14 @@ services:
       APP_FRONTEND_URL: ${APP_FRONTEND_URL}
       
       # Configuration Email (Indispensable pour corriger l'erreur 400)
+     # Section Email dans l'environnement du backend
       MAIL_USERNAME: ${SPRING_MAIL_USERNAME}
       MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
-      # On force les propriétés système pour Docker
       SPRING_MAIL_HOST: smtp.gmail.com
-      SPRING_MAIL_PORT: 465
+      SPRING_MAIL_PORT: 587
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "true"
 
   frontend:
     build: ./frontend-signature
