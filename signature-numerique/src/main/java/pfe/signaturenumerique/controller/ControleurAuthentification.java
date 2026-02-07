@@ -94,32 +94,61 @@ public class ControleurAuthentification {
     public ResponseEntity<?> motDePasseOublie(@RequestParam String email) {
         try {
             serviceAuthentification.traiterMotDePasseOublie(email);
-            return ResponseEntity.ok().body(Map.of("message", "Lien de réinitialisation envoyé"));
+            return ResponseEntity.ok().body(Map.of(
+                    "succes", true,
+                    "message", "Lien de réinitialisation envoyé"
+            ));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "succes", false,
+                    "message", e.getMessage()
+            ));
         }
     }
 
     @PostMapping("/reinitialiser")
-    public ResponseEntity<?> reinitialiser(@RequestParam String token, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> reinitialiser(@RequestBody Map<String, String> body) {
         try {
+            String token = body.get("token");
             String nouveauMdp = body.get("nouveauMdp");
 
+            if (token == null || token.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "succes", false,
+                        "message", "Le token est requis"
+                ));
+            }
+
             if (nouveauMdp == null || nouveauMdp.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("Le mot de passe est requis");
+                return ResponseEntity.badRequest().body(Map.of(
+                        "succes", false,
+                        "message", "Le mot de passe est requis"
+                ));
             }
 
             if (nouveauMdp.length() < 6) {
-                return ResponseEntity.badRequest().body("Le mot de passe doit contenir au moins 6 caractères");
+                return ResponseEntity.badRequest().body(Map.of(
+                        "succes", false,
+                        "message", "Le mot de passe doit contenir au moins 6 caractères"
+                ));
             }
 
             serviceAuthentification.changerMotDePasse(token, nouveauMdp);
-            return ResponseEntity.ok().body(Map.of("message", "Mot de passe mis à jour avec succès"));
+            return ResponseEntity.ok().body(Map.of(
+                    "succes", true,
+                    "message", "Mot de passe mis à jour avec succès"
+            ));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "succes", false,
+                    "message", e.getMessage()
+            ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erreur interne du serveur");
+                    .body(Map.of(
+                            "succes", false,
+                            "message", "Erreur interne du serveur"
+                    ));
         }
     }
 }

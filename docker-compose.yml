@@ -6,32 +6,41 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Base de données
+      # Base de données MySQL
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       
-      # MongoDB
-      #SPRING_DATA_MONGODB_URI: ${MONGO_URI}
+      # MongoDB (optionnel - commenté si non utilisé)
+      # SPRING_DATA_MONGODB_URI: ${MONGO_URI}
       
       # Sécurité et JWT
       APP_SECURITY_JWT_SECRET: ${APP_SECURITY_JWT_SECRET}
       
-      # CONFIGURATION EMAIL (Format correct pour Docker)
-      SPRING_MAIL_HOST: smtp.gmail.com
-      SPRING_MAIL_PORT: 465
-      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME}
-      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE: "true"
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SOCKETFACTORY_PORT: 465
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SOCKETFACTORY_CLASS: javax.net.ssl.SSLSocketFactory
+      # CONFIGURATION RESEND (remplace Gmail SMTP)
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-onrender@resend.dev}
+      
+      # Désactiver Spring Mail pour éviter les conflits
+      SPRING_MAIL_ENABLED: "false"
+      
+      # URL de l'application
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      
+      # Configuration Google OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+
+    # Pour le développement, vous pouvez monter les logs
+    volumes:
+      - ./logs:/app/logs
 
   frontend:
     build: ./frontend-signature
     ports:
       - "3000:80"
     environment:
-      - REACT_APP_API_URL=${APP_BASE_URL}
+      - REACT_APP_API_URL=${APP_BASE_URL:-http://localhost:8080}
+      - REACT_APP_RESEND_ENABLED=true
     depends_on:
       - backend
