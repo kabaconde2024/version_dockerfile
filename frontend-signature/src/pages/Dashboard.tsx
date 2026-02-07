@@ -15,7 +15,6 @@ import authService from '../services/authService';
 import CryptoJS from 'crypto-js';
 import axios from 'axios';
 
-// URL DE VOTRE BACKEND SUR RENDER
 const API_BASE_URL = "https://version-dockerfile.onrender.com";
 
 function ElevationScroll(props: any) {
@@ -36,23 +35,17 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [utilisateur, setUtilisateur] = useState<any>(null);
-
-  // États du document
   const [file, setFile] = useState<File | null>(null);
   const [hash, setHash] = useState<string>('');
   const [isSigning, setIsSigning] = useState(false);
   const [signatureDone, setSignatureDone] = useState(false);
-  
-  // États de l'historique
   const [historique, setHistorique] = useState<any[]>([]);
-
-  // ÉTATS POUR L'INVITATION
   const [openInvite, setOpenInvite] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSendingInvite, setIsSendingInvite] = useState(false);
 
-  // 1. Fonction de chargement de l'historique corrigée avec l'URL Render
+  // --- CORRECTION : Extraction de response.data.documents ---
   const loadHistorique = useCallback(async (userId: any) => {
     try {
       const token = localStorage.getItem('token');
@@ -61,32 +54,33 @@ const Dashboard: React.FC = () => {
       const response = await axios.get(`${API_BASE_URL}/api/signature/historique/${userId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      setHistorique(Array.isArray(response.data) ? response.data : []);
+      
+      // On extrait la propriété "documents" envoyée par le Backend
+      if (response.data && response.data.documents) {
+        setHistorique(response.data.documents);
+      } else {
+        setHistorique([]);
+      }
     } catch (err) {
       console.error("Erreur lors du chargement de l'historique:", err);
     }
   }, []);
 
-  // 2. Initialisation
   useEffect(() => {
     const initDashboard = async () => {
       const user = authService.getUtilisateurCourant();
       const userId = user?.id || user?._id;
-
       if (!user || !userId) {
         navigate('/connexion');
         return;
       }
-
       setUtilisateur(user);
       await loadHistorique(userId);
       setIsCheckingAuth(false);
     };
-
     initDashboard();
   }, [navigate, loadHistorique]);
 
-  // FONCTION TÉLÉCHARGEMENT corrigée avec l'URL Render
   const handleDownload = async (docId: string, fileName: string) => {
     try {
       const token = localStorage.getItem('token');
@@ -94,7 +88,6 @@ const Dashboard: React.FC = () => {
         responseType: 'blob',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -108,19 +101,13 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // --- FONCTION INVITATION CORRIGÉE avec l'URL Render ---
   const handleSendInvite = async () => {
     if (!inviteEmail || !selectedDocId) return;
-    
-    const documentData = historique.find(d => d.id === selectedDocId);
-    const fileNameToSend = documentData ? documentData.fileName : "Document";
-
     setIsSendingInvite(true);
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(`${API_BASE_URL}/api/signature/inviter`, {
         documentId: selectedDocId,
-        fileName: fileNameToSend,
         email: inviteEmail
       }, {
         headers: { 
@@ -128,21 +115,14 @@ const Dashboard: React.FC = () => {
           'Content-Type': 'application/json'
         }
       });
-      
       alert(response.data.message || "Invitation envoyée avec succès !");
       setOpenInvite(false);
       setInviteEmail("");
     } catch (error: any) {
-      const msg = error.response?.data?.message || "Erreur : Utilisateur introuvable ou erreur serveur.";
-      alert(msg);
+      alert(error.response?.data?.message || "Erreur lors de l'invitation.");
     } finally {
       setIsSendingInvite(false);
     }
-  };
-
-  const handleLogout = () => {
-    authService.deconnecter();
-    navigate('/connexion');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,11 +142,9 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // FONCTION SIGNATURE corrigée avec l'URL Render
   const handleSignerDocument = async () => {
     const userId = utilisateur?.id || utilisateur?._id;
     if (!hash || !file || !userId) return;
-
     setIsSigning(true);
     try {
       const reader = new FileReader();
@@ -182,7 +160,6 @@ const Dashboard: React.FC = () => {
         }, { 
           headers: { 'Authorization': `Bearer ${token}` } 
         });
-
         setSignatureDone(true);
         await loadHistorique(userId);
       };
@@ -193,13 +170,12 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  if (isCheckingAuth) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const handleLogout = () => {
+    authService.deconnecter();
+    navigate('/connexion');
+  };
+
+  if (isCheckingAuth) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
 
   return (
     <Box sx={{ bgcolor: '#F8FAFC', minHeight: '100vh' }}>
@@ -210,9 +186,7 @@ const Dashboard: React.FC = () => {
               <Typography variant="h5" sx={{ fontWeight: 800, cursor: 'pointer', color: '#1A237E' }} onClick={() => navigate('/')}>
                 Protected <Box component="span" sx={{ color: '#2979FF' }}>Consulting</Box>
               </Typography>
-              <Button startIcon={<Logout />} onClick={handleLogout} sx={{ fontWeight: 700, textTransform: 'none' }}>
-                Déconnexion
-              </Button>
+              <Button startIcon={<Logout />} onClick={handleLogout} sx={{ fontWeight: 700, textTransform: 'none' }}>Déconnexion</Button>
             </Toolbar>
           </Container>
         </AppBar>
@@ -246,19 +220,11 @@ const Dashboard: React.FC = () => {
             <Stack spacing={4}>
               <Card sx={{ borderRadius: 5, p: 2 }}>
                 <CardContent>
-                  <Typography variant="h6" fontWeight={800} gutterBottom>
-                    <FilePresent color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} /> 
-                    Nouveau Scellement
-                  </Typography>
+                  <Typography variant="h6" fontWeight={800} gutterBottom><FilePresent color="primary" sx={{ mr: 1, verticalAlign: 'middle' }} /> Nouveau Scellement</Typography>
                   <Box component="label" sx={{ mt: 2, p: 4, border: '2px dashed #CBD5E1', borderRadius: 4, textAlign: 'center', display: 'block', cursor: 'pointer', transition: '0.3s', '&:hover': { bgcolor: '#F1F5F9' } }}>
                     <input type="file" hidden accept=".pdf" onChange={handleFileChange} />
-                    {!file ? (
-                      <Typography color="text.secondary">Cliquez pour ajouter un document PDF</Typography>
-                    ) : (
-                      <Typography fontWeight={700} color="primary">{file.name}</Typography>
-                    )}
+                    {!file ? <Typography color="text.secondary">Cliquez pour ajouter un document PDF</Typography> : <Typography fontWeight={700} color="primary">{file.name}</Typography>}
                   </Box>
-
                   {hash && (
                     <Box sx={{ mt: 3 }}>
                       {!signatureDone ? (
@@ -266,9 +232,7 @@ const Dashboard: React.FC = () => {
                           {isSigning ? <CircularProgress size={24} color="inherit" /> : 'Signer numériquement'}
                         </Button>
                       ) : (
-                        <Alert icon={<TaskAlt />} severity="success" sx={{ borderRadius: 3 }}>
-                          Document signé avec succès et archivé.
-                        </Alert>
+                        <Alert icon={<TaskAlt />} severity="success" sx={{ borderRadius: 3 }}>Document signé avec succès et archivé.</Alert>
                       )}
                     </Box>
                   )}
@@ -276,9 +240,7 @@ const Dashboard: React.FC = () => {
               </Card>
 
               <Box>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <History /> Historique des documents
-                </Typography>
+                <Typography variant="h6" fontWeight={800} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}><History /> Historique des documents</Typography>
                 <Stack spacing={2}>
                   {historique.length === 0 ? (
                     <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
@@ -294,14 +256,10 @@ const Dashboard: React.FC = () => {
                             <Typography variant="caption" color="text.secondary">{new Date(doc.timestamp).toLocaleString()}</Typography>
                           </Box>
                         </Stack>
-                        
                         <Stack direction="row" spacing={1}>
-                          <IconButton size="small" color="primary" title="Inviter quelqu'un" onClick={() => { setSelectedDocId(doc.id); setOpenInvite(true); }}>
-                            <PersonAdd fontSize="small" />
-                          </IconButton>
-                          <IconButton size="small" color="info" title="Télécharger" onClick={() => handleDownload(doc.id, doc.fileName)}>
-                            <Download fontSize="small" />
-                          </IconButton>
+                          <IconButton size="small" color="primary" onClick={() => { setSelectedDocId(doc.id || doc._id); setOpenInvite(true); }}><PersonAdd fontSize="small" /></IconButton>
+                          {/* CORRECTION : Utilisation de doc.id || doc._id */}
+                          <IconButton size="small" color="info" onClick={() => handleDownload(doc.id || doc._id, doc.fileName)}><Download fontSize="small" /></IconButton>
                           <Chip label="SCELLÉ" size="small" color="success" variant="outlined" sx={{ fontWeight: 800 }} />
                         </Stack>
                       </Paper>
@@ -314,33 +272,15 @@ const Dashboard: React.FC = () => {
         </Grid>
       </Container>
 
-      {/* MODAL D'INVITATION */}
       <Dialog open={openInvite} onClose={() => setOpenInvite(false)} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontWeight: 800 }}>Partager le document</DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            Saisissez l'email de la personne pour l'autoriser à consulter ce document.
-          </DialogContentText>
-          <TextField
-            autoFocus
-            label="Email de l'invité"
-            type="email"
-            fullWidth
-            variant="outlined"
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-          />
+          <DialogContentText sx={{ mb: 2 }}>Saisissez l'email de la personne pour l'autoriser à consulter ce document.</DialogContentText>
+          <TextField autoFocus label="Email de l'invité" type="email" fullWidth variant="outlined" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={() => setOpenInvite(false)} color="inherit">Annuler</Button>
-          <Button 
-            onClick={handleSendInvite} 
-            variant="contained" 
-            disabled={!inviteEmail || isSendingInvite}
-            startIcon={isSendingInvite ? <CircularProgress size={20} /> : <PersonAdd />}
-          >
-            Envoyer l'accès
-          </Button>
+          <Button onClick={handleSendInvite} variant="contained" disabled={!inviteEmail || isSendingInvite} startIcon={isSendingInvite ? <CircularProgress size={20} /> : <PersonAdd />}>Envoyer l'accès</Button>
         </DialogActions>
       </Dialog>
     </Box>
