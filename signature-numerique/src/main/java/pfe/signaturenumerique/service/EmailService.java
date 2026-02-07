@@ -32,10 +32,13 @@ public class EmailService {
             message.setText(contenu);
 
             mailSender.send(message);
-            log.info("Email envoyé à: {} - Sujet: {}", emailDestinataire, sujet);
+            log.info("Email envoyé avec succès à: {}", emailDestinataire);
         } catch (Exception e) {
-            log.error("Erreur lors de l'envoi de l'email à {}: {}", emailDestinataire, e.getMessage());
-            throw new RuntimeException("Erreur lors de l'envoi de l'email");
+            // C'est ici que vous verrez la vraie raison (ex: Invalid Credentials ou Connection Timeout)
+            log.error("ÉCHEC CRITIQUE SMTP pour {}: {}", emailDestinataire, e.getMessage());
+            e.printStackTrace();
+            // On jette une exception plus explicite pour éviter la 400 générique
+            throw new RuntimeException("Le serveur mail a refusé la connexion : " + e.getMessage());
         }
     }
 

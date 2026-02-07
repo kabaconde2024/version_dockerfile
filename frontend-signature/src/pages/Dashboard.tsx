@@ -15,6 +15,9 @@ import authService from '../services/authService';
 import CryptoJS from 'crypto-js';
 import axios from 'axios';
 
+// URL DE VOTRE BACKEND SUR RENDER
+const API_BASE_URL = "https://version-dockerfile.onrender.com";
+
 function ElevationScroll(props: any) {
   const { children } = props;
   const trigger = useScrollTrigger({ disableHysteresis: true, threshold: 0 });
@@ -49,13 +52,13 @@ const Dashboard: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSendingInvite, setIsSendingInvite] = useState(false);
 
-  // 1. Fonction de chargement de l'historique
+  // 1. Fonction de chargement de l'historique corrigée avec l'URL Render
   const loadHistorique = useCallback(async (userId: any) => {
     try {
       const token = localStorage.getItem('token');
       if (!token || !userId) return;
 
-      const response = await axios.get(`http://localhost:8080/api/signature/historique/${userId}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/signature/historique/${userId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setHistorique(Array.isArray(response.data) ? response.data : []);
@@ -83,11 +86,11 @@ const Dashboard: React.FC = () => {
     initDashboard();
   }, [navigate, loadHistorique]);
 
-  // FONCTION TÉLÉCHARGEMENT
+  // FONCTION TÉLÉCHARGEMENT corrigée avec l'URL Render
   const handleDownload = async (docId: string, fileName: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:8080/api/signature/telecharger/${docId}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/signature/telecharger/${docId}`, {
         responseType: 'blob',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -105,20 +108,19 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // --- FONCTION INVITATION CORRIGÉE ---
+  // --- FONCTION INVITATION CORRIGÉE avec l'URL Render ---
   const handleSendInvite = async () => {
     if (!inviteEmail || !selectedDocId) return;
     
-    // Trouver le nom du document correspondant dans l'historique pour l'envoyer au backend
     const documentData = historique.find(d => d.id === selectedDocId);
     const fileNameToSend = documentData ? documentData.fileName : "Document";
 
     setIsSendingInvite(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:8080/api/signature/inviter', {
+      const response = await axios.post(`${API_BASE_URL}/api/signature/inviter`, {
         documentId: selectedDocId,
-        fileName: fileNameToSend, // Ajout de fileName ici pour éviter le "null" dans l'email
+        fileName: fileNameToSend,
         email: inviteEmail
       }, {
         headers: { 
@@ -160,6 +162,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // FONCTION SIGNATURE corrigée avec l'URL Render
   const handleSignerDocument = async () => {
     const userId = utilisateur?.id || utilisateur?._id;
     if (!hash || !file || !userId) return;
@@ -171,7 +174,7 @@ const Dashboard: React.FC = () => {
       reader.onload = async () => {
         const base64File = (reader.result as string).split(',')[1];
         const token = localStorage.getItem('token'); 
-        await axios.post('http://localhost:8080/api/signature/signer', {
+        await axios.post(`${API_BASE_URL}/api/signature/signer`, {
           hash: hash, 
           fileName: file.name, 
           userId: userId,

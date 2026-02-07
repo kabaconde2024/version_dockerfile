@@ -27,7 +27,10 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/signature")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
+@CrossOrigin(origins = {
+        "http://localhost:3000",
+        "https://signature-frontend-1s7s.onrender.com" // Ajoutez votre URL frontend Render
+})
 public class SignatureController {
     @Autowired
     private EmailService emailService;
