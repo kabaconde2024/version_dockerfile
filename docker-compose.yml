@@ -1,23 +1,38 @@
 version: "3.8"
 
 services:
-
   backend:
     build: ./signature-numerique
     ports:
       - "8080:8080"
     environment:
-      DB_URL: ${DB_URL}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
+      # Base de données (TiDB / PostgreSQL)
+      DB_URL: ${SPRING_DATASOURCE_URL}
+      DB_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      DB_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      
+      # MongoDB
       MONGO_URI: ${MONGO_URI}
-      JWT_SECRET: ${JWT_SECRET}
-      MAIL_USERNAME: ${MAIL_USERNAME}
-      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      
+      # Sécurité et JWT
+      JWT_SECRET: ${APP_SECURITY_JWT_SECRET}
+      APP_BASE_URL: ${APP_BASE_URL}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL}
+      
+      # Configuration Email (Indispensable pour corriger l'erreur 400)
+      MAIL_USERNAME: ${SPRING_MAIL_USERNAME}
+      MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
+      # On force les propriétés système pour Docker
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 465
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE: "true"
 
   frontend:
     build: ./frontend-signature
     ports:
       - "3000:80"
+    environment:
+      - REACT_APP_API_URL=${APP_BASE_URL}
     depends_on:
       - backend
