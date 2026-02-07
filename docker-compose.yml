@@ -13,7 +13,8 @@ services:
       
       # MongoDB (optionnel - commenté si non utilisé)
       # SPRING_DATA_MONGODB_URI: ${MONGO_URI}
-      
+      # MongoDB (Activé maintenant !)
+      SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI}
       # Sécurité et JWT
       APP_SECURITY_JWT_SECRET: ${APP_SECURITY_JWT_SECRET}
       
