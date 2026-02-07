@@ -44,13 +44,11 @@ public class ServiceAuthentification {
     }
 
 
-
     public Utilisateur inscrire(RequeteInscription requete) {
-        if (utilisateurRepository.existsByEmail(requete.getEmail())) {
-            throw new RuntimeException("Email déjà utilisé");
-        }
+        // ... vérification email existant ...
 
         Utilisateur utilisateur = new Utilisateur();
+        // Champs déjà présents
         utilisateur.setEmail(requete.getEmail());
         utilisateur.setMotDePasse(passwordEncoder.encode(requete.getMotDePasse()));
         utilisateur.setPrenom(requete.getPrenom());
@@ -58,8 +56,12 @@ public class ServiceAuthentification {
         utilisateur.setCin(requete.getCin());
         utilisateur.setTelephone(requete.getTelephone());
 
-         utilisateur.setAdresse(requete.getAdresse());
+        // AJOUTEZ CES LIGNES (Manquantes dans votre version précédente)
+        utilisateur.setCivilite(requete.getCivilite());
+        utilisateur.setDateNaissance(requete.getDateNaissance());
+        utilisateur.setAdresse(requete.getAdresse());
         utilisateur.setVille(requete.getVille());
+        utilisateur.setCodePostal(requete.getCodePostal());
 
         utilisateur.setMfaActive(true);
         utilisateur.setActive(true);
@@ -67,7 +69,6 @@ public class ServiceAuthentification {
 
         return utilisateurRepository.save(utilisateur);
     }
-
 
 
     public ReponseAuthentification connecter(RequeteConnexion requete) {
