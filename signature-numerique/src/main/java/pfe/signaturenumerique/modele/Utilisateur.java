@@ -45,19 +45,12 @@ public class Utilisateur implements UserDetails {
     private Set<RoleUtilisateur> roles = new HashSet<>();
 
     public Utilisateur() {}
-    @Column(columnDefinition = "TEXT")
-    private String clePublique;
+
     // Getters et Setters pour les clés
     public String getPrivateKeyStr() { return privateKeyStr; }
     public void setPrivateKeyStr(String privateKeyStr) { this.privateKeyStr = privateKeyStr; }
 
-    public String getClePublique() {
-        return clePublique;
-    }
 
-    public void setClePublique(String clePublique) {
-        this.clePublique = clePublique;
-    }
 
     // Autres Getters et Setters
     public Long getId() { return id; }

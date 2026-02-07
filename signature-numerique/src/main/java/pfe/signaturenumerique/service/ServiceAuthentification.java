@@ -3,6 +3,7 @@ package pfe.signaturenumerique.service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pfe.signaturenumerique.modele.Utilisateur;
 import pfe.signaturenumerique.repository.UtilisateurRepository;
 import pfe.signaturenumerique.dto.RequeteInscription;
@@ -43,12 +44,16 @@ public class ServiceAuthentification {
         this.emailService = emailService;
     }
 
-
+    @Transactional
     public Utilisateur inscrire(RequeteInscription requete) {
-        // ... vérification email existant ...
+        // Vérification si l'email existe déjà pour éviter une erreur SQL brutale
+        if (utilisateurRepository.findByEmail(requete.getEmail()).isPresent()) {
+            throw new RuntimeException("Cet email est déjà utilisé par un autre compte.");
+        }
 
         Utilisateur utilisateur = new Utilisateur();
-        // Champs déjà présents
+
+        // Informations de base
         utilisateur.setEmail(requete.getEmail());
         utilisateur.setMotDePasse(passwordEncoder.encode(requete.getMotDePasse()));
         utilisateur.setPrenom(requete.getPrenom());
@@ -56,20 +61,23 @@ public class ServiceAuthentification {
         utilisateur.setCin(requete.getCin());
         utilisateur.setTelephone(requete.getTelephone());
 
-        // AJOUTEZ CES LIGNES (Manquantes dans votre version précédente)
+        // Coordonnées et détails personnels
         utilisateur.setCivilite(requete.getCivilite());
         utilisateur.setDateNaissance(requete.getDateNaissance());
         utilisateur.setAdresse(requete.getAdresse());
         utilisateur.setVille(requete.getVille());
         utilisateur.setCodePostal(requete.getCodePostal());
 
+        // Paramètres système par défaut
         utilisateur.setMfaActive(true);
         utilisateur.setActive(true);
         utilisateur.setProvider("LOCAL");
 
+        // Note: Les colonnes publicKeyStr et privateKeyStr restent nulles à l'inscription
+        // Elles seront remplies lors de la génération des clés de signature.
+
         return utilisateurRepository.save(utilisateur);
     }
-
 
     public ReponseAuthentification connecter(RequeteConnexion requete) {
         Utilisateur utilisateur = utilisateurRepository.findByEmail(requete.getEmail())
@@ -89,7 +97,7 @@ public class ServiceAuthentification {
                 emailService.envoyerCodeMfa(utilisateur.getEmail(), codeMfa);
             } catch (Exception e) {
                 System.err.println("Erreur d'envoi d'email : " + e.getMessage());
-                throw new RuntimeException("Erreur technique lors de l'envoi du code");
+                throw new RuntimeException("Erreur technique lors de l'envoi du code de vérification");
             }
 
             ReponseAuthentification reponseMfa = new ReponseAuthentification();
@@ -103,8 +111,6 @@ public class ServiceAuthentification {
         String token = jwtUtils.generateToken(utilisateur);
         return construireReponseSucces(utilisateur, token);
     }
-
-
 
     public ReponseAuthentification connecterAvecGoogle(String tokenId) throws Exception {
         GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
@@ -133,7 +139,7 @@ public class ServiceAuthentification {
             String token = jwtUtils.generateToken(utilisateur);
             return construireReponseSucces(utilisateur, token);
         } else {
-            throw new RuntimeException("Token Google invalide");
+            throw new RuntimeException("Authentification Google échouée : Token invalide");
         }
     }
 
@@ -163,12 +169,12 @@ public class ServiceAuthentification {
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
         if (utilisateur.getCodeMfa() == null || !utilisateur.getCodeMfa().equals(code)) {
-            throw new RuntimeException("Code invalide");
+            throw new RuntimeException("Code de vérification invalide");
         }
 
         if (utilisateur.getExpirationCodeMfa() != null &&
                 utilisateur.getExpirationCodeMfa().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Code expiré");
+            throw new RuntimeException("Code expiré. Veuillez en demander un nouveau.");
         }
 
         utilisateur.setCodeMfa(null);
@@ -181,23 +187,24 @@ public class ServiceAuthentification {
 
     public void traiterMotDePasseOublie(String email) {
         Utilisateur utilisateur = utilisateurRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email non trouvé"));
+                .orElseThrow(() -> new RuntimeException("Aucun compte associé à cet email"));
 
         String token = UUID.randomUUID().toString();
         utilisateur.setCodeMfa(token);
         utilisateur.setExpirationCodeMfa(LocalDateTime.now().plusHours(1));
         utilisateurRepository.save(utilisateur);
 
-        String lien = "http://localhost:3000/reinitialiser-password?token=" + token;
+        // Ajustez l'URL selon votre environnement (localhost ou Render)
+        String lien = "https://signature-numerique-frontend.onrender.com/reinitialiser-password?token=" + token;
         emailService.envoyerLienReinitialisation(email, lien);
     }
 
     public void changerMotDePasse(String token, String nouveauMdp) {
         Utilisateur utilisateur = utilisateurRepository.findByCodeMfa(token)
-                .orElseThrow(() -> new RuntimeException("Lien invalide ou expiré"));
+                .orElseThrow(() -> new RuntimeException("Lien de réinitialisation invalide ou expiré"));
 
         if (utilisateur.getExpirationCodeMfa().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Lien expiré");
+            throw new RuntimeException("Le lien a expiré");
         }
 
         utilisateur.setMotDePasse(passwordEncoder.encode(nouveauMdp));
@@ -216,10 +223,11 @@ public class ServiceAuthentification {
         reponse.setTokenAcces(token);
 
         ReponseAuthentification.UtilisateurDto dto = new ReponseAuthentification.UtilisateurDto();
+        dto.setId(u.getId()); // Crucial pour le frontend
         dto.setEmail(u.getEmail());
         dto.setPrenom(u.getPrenom());
         dto.setNom(u.getNom());
-        dto.setId(u.getId()); // <--- AJOUTEZ CETTE LIGNE ICI AUSSI
+
         if (u.getRoles() != null) {
             dto.setRoles(u.getRoles().stream().map(Enum::name).collect(Collectors.toSet()));
         }
