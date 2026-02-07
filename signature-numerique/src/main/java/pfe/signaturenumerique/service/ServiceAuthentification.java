@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pfe.signaturenumerique.modele.RoleUtilisateur;
 import pfe.signaturenumerique.modele.Utilisateur;
 import pfe.signaturenumerique.repository.UtilisateurRepository;
 import pfe.signaturenumerique.dto.RequeteInscription;
@@ -75,7 +76,7 @@ public class ServiceAuthentification {
 
         // Note: Les colonnes publicKeyStr et privateKeyStr restent nulles à l'inscription
         // Elles seront remplies lors de la génération des clés de signature.
-
+        utilisateur.getRoles().add(RoleUtilisateur.ROLE_UTILISATEUR);
         return utilisateurRepository.save(utilisateur);
     }
 
